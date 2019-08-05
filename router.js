@@ -6,7 +6,8 @@ const {
   createFolder,
   deleteFile,
   deleteFolder,
-  uploadFile
+  uploadFile,
+  fileRename
 } = require('./src/fileFn');
 const {
   createProject,
@@ -236,8 +237,32 @@ router.post('/uploadFiles', async (ctx) => {
   // 上传文件成功后更新相应项目中的记录
   ctx.body = await updateProjectMessage(
     projectId,
-    { icons:  newIcons}
+    { icons: newIcons}
   );
+});
+
+// 更改图片名称
+router.post('/iconRename', async (ctx) => {
+  const { projectId, path, newName, oldName } = ctx.request.body;
+  const userId = ctx.cookies.get('_id');
+  const isUserProject = await getProject({ _id: projectId, userId });
+  // 用户是否具有本项目权限
+  if (isUserProject.state === 'error') {
+    ctx.body = isUserProject;
+    return;
+  }
+  const renameResult = await fileRename(path, newName, oldName);
+  if (renameResult.state === 'error') {
+    ctx.body = renameResult;
+    return;
+  }
+  const newIcons = isUserProject.result.icons.map(icon => {
+    if (icon === oldName) {
+      return newName;
+    }
+    return icon;
+  });
+  ctx.body = await updateProjectMessage(projectId, { icons: newIcons });
 });
 
 // 删除图片
@@ -267,8 +292,10 @@ router.post('/deleteIcon', async (ctx) => {
   ctx.body = updateProjectResult;
   // 更新成功后删除相应缓存和文件
   if (updateProjectResult.state === 'success') {
-    projectIconsCache[projectId] =
-      projectIconsCache[projectId].filter(icon => !iconNames.includes(icon));
+    if (Array.isArray(projectIconsCache[projectId])) {
+      projectIconsCache[projectId] =
+        projectIconsCache[projectId].filter(icon => !iconNames.includes(icon));
+    }
     iconNames.forEach(icon => deleteFile(`${path}/${icon}`));
   }
 });
@@ -291,6 +318,11 @@ router.get('/download', async (ctx) => {
     return;
   }
   ctx.body = { state: 'error' };
+});
+
+// 批量下载文件
+router.get('/download', async (ctx) => {
+  
 });
 
 module.exports = router;

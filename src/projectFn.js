@@ -44,7 +44,7 @@ exports.updateProjectMessage = (_id, query) => {
   return new Promise((resolve, reject) => {
     ProjectModel.findOneAndUpdate(
       { _id },
-      { $set: { ...query } },
+      { $set: query },
       { new: true, useFindAndModify: false },
       (err, data) => {
         if (err) {
