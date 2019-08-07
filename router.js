@@ -7,7 +7,8 @@ const {
   deleteFile,
   deleteFolder,
   uploadFile,
-  fileRename
+  fileRename,
+  compressFiles
 } = require('./src/fileFn');
 const {
   createProject,
@@ -317,12 +318,23 @@ router.get('/download', async (ctx) => {
     ctx.body = fs.createReadStream(filePath);
     return;
   }
-  ctx.body = { state: 'error' };
+  ctx.body = { state: 'error', result: 'path error' };
 });
 
-// 批量下载文件
-router.get('/download', async (ctx) => {
-  
+// 下载整个文件夹
+router.get('/batchDownload', async (ctx) => {
+  const { path } = ctx.query;
+  const compressFilesResult = await compressFiles(path);
+  if (compressFilesResult.state === 'error') {
+    ctx.body = compressFilesResult;
+    return;
+  }
+  const filePath = compressFilesResult.result;
+  const file = fs.statSync(filePath);
+  ctx.set('Content-Type', 'application/octet-stream');
+  ctx.set('Content-Disposition', `attachment;filename=icons.zip`);
+  ctx.set('Content-Length', file.size);
+  ctx.body = fs.createReadStream(filePath);
 });
 
 module.exports = router;

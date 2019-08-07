@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const archiver = require('archiver');
 
 const basePath = 'public/icon';
 
@@ -59,5 +60,24 @@ exports.fileRename = (path, newName, oldName) => {
       }
       resolve({ state: 'success', result: 'ok' });
     });
+  });
+}
+
+// 压缩文件夹
+exports.compressFiles = (path) => {
+  return new Promise((resolve, reject) => {
+    const output = fs.createWriteStream(__dirname + '/icons.zip');
+    const archive = archiver('zip', {
+      zlib: { level: 9 }
+    });
+    output.on('close', () => {
+      resolve({ state: 'success', result: 'src/icons.zip' });
+    });
+    archive.on('error', (err) => {
+      reject({ state: 'error', result: err });
+    });
+    archive.pipe(output);
+    archive.directory(`${basePath}/${path}`, false);
+    archive.finalize();
   });
 }
