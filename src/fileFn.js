@@ -33,6 +33,20 @@ exports.deleteFolder = (path) => {
   }
 }
 
+// 上传 base64 图片
+exports.uploadHead = (imgData, imgName) => {
+  return new Promise((resolve, reject) => {
+    const base64Data = imgData.replace(/^data:image\/\w+;base64,/, '');
+    const dataBuffer = Buffer.from(base64Data, 'base64');
+    fs.writeFile(`${basePath}/head/${imgName}`, dataBuffer, (err) => {
+      if (err) {
+        reject({ state: 'error', result: 'server is error' });
+      }
+      resolve({ state: 'success', result: imgName });
+    });
+  });
+}
+
 // 上传文件
 exports.uploadFile = (file, fileName, iconPath) => {
   return new Promise((resolve, reject) => {

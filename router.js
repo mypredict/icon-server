@@ -8,7 +8,8 @@ const {
   deleteFolder,
   uploadFile,
   fileRename,
-  compressFiles
+  compressFiles,
+  uploadHead
 } = require('./src/fileFn');
 const {
   createProject,
@@ -29,7 +30,7 @@ router.post('/register', async (ctx) => {
       ctx.body = await register({
         username,
         password,
-        avatar: ''
+        avatar: '/icon/head/initHead.jpeg'
       });
     } else {
       ctx.body = queryUser;
@@ -89,6 +90,22 @@ router.get('/isOnLine', async (ctx) => {
   }
   ctx.body = { state: 'error', result: 'not online' };
 })
+
+// 更换用户头像
+router.post('/replaceAvatar', async (ctx) => {
+  const { imgData, imgName } = ctx.request.body;
+  const userId = ctx.cookies.get('_id');
+  if (userId) {
+    const replaceAvatarResult = await uploadHead(imgData, imgName);
+    if (replaceAvatarResult.state === 'error') {
+      ctx.body = replaceAvatarResult;
+      return;
+    }
+    ctx.body = await updateUserMessage(userId, { avatar: `/icon/head/${imgName}` });
+    return;
+  }
+  ctx.body = { state: 'error', result: 'not online' };
+});
 
 // 登出
 router.get('/logout', async (ctx) => {
@@ -250,6 +267,10 @@ router.post('/iconRename', async (ctx) => {
   // 用户是否具有本项目权限
   if (isUserProject.state === 'error') {
     ctx.body = isUserProject;
+    return;
+  }
+  if (isUserProject.result.icons.includes(newName)) {
+    ctx.body = { state: 'error', result: 'repeat' };
     return;
   }
   const renameResult = await fileRename(path, newName, oldName);
