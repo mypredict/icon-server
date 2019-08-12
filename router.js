@@ -156,12 +156,17 @@ router.post('/createProject', async (ctx) => {
     if (createProjectResult.state === 'success') {
       // 创建文件夹
       createFolder(`${type}/${userId}/${name}`);
-      // 如果是个人项目则更新用户的个人项目
+      // 如果是个人(团队)项目则更新用户的个人(团队)项目
+      const userMessage = await getUser({ _id: userId });
       if (type === 'personal') {
-        const userMessage = await getUser({ _id: userId });
         updateUserMessage(
           userId,
           { personalProjects: [name, ...userMessage.result.personalProjects] }
+        );
+      } else {
+        updateUserMessage(
+          userId,
+          { teamProjects: [name, ...userMessage.result.personalProjects] }
         );
       }
     }
