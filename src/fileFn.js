@@ -77,6 +77,13 @@ exports.fileRename = (path, newName, oldName) => {
   });
 }
 
+// 移动文件到文件夹
+exports.cpFile = (fileName, oldPath, newPath) => {
+  return new Promise((resolve, reject) => {
+    
+  });
+}
+
 // 压缩文件夹
 exports.compressFiles = (path) => {
   return new Promise((resolve, reject) => {

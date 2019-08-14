@@ -16,7 +16,7 @@ exports.createProject = (message) => {
 // 单个项目查询
 exports.getProject = (query) => {
   return new Promise((resolve, reject) => {
-    ProjectModel.findOne({ ...query }, (err, data) => {
+    ProjectModel.findOne(query, (err, data) => {
       if (err) {
         reject({ state: 'error', result: 'server is error' });
       }
@@ -53,6 +53,64 @@ exports.updateProjectMessage = (_id, query) => {
         resolve({ state: 'success', result: data });
       }
     );
+  });
+}
+
+// 更新项目信息
+exports.updateProjectMessage2 = (projectName, type, query) => {
+  return new Promise((resolve, reject) => {
+    ProjectModel.findOneAndUpdate(
+      { projectName, type },
+      { $set: query },
+      { new: true, useFindAndModify: false },
+      (err, data) => {
+        if (err) {
+          reject({ state: 'error', result: 'server is error' });
+        }
+        resolve({ state: 'success', result: data });
+      }
+    );
+  });
+}
+
+const getProject = (query) => {
+  return new Promise((resolve, reject) => {
+    ProjectModel.findOne(query, (err, data) => {
+      if (err) {
+        reject({ state: 'error', result: 'server is error' });
+      }
+      data
+        ? resolve({ state: 'success', result: data })
+        : resolve({ state: 'error', result: null });
+    });
+  });
+}
+
+// 循环查询项目中是否存在图片
+exports.filterProjectsIcons = (userId, projects, type, icons) => {
+  const responseResult = {};
+  return new Promise((resolve, reject) => {
+    projects.forEach(async (project) => {
+      responseResult[project] = {};
+      const isUserProject = await getProject({
+        userId,
+        type,
+        name: project
+      });
+      if (isUserProject.state === 'error') {
+        reject(isUserProject);
+      }
+      icons.forEach((icon) => {
+        if (isUserProject.result.icons.includes(icon)) {
+          responseResult[project][icon] = false;
+        } else {
+          responseResult[project][icon] = true;
+        }
+      });
+      if (Object.keys(responseResult).length === projects.length) {
+        resolve({ state: 'success', result: responseResult });
+      }
+    });
   });
 }
 

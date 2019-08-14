@@ -16,6 +16,8 @@ const {
   getProject,
   getProjects,
   updateProjectMessage,
+  updateProjectMessage2,
+  filterProjectsIcons,
   deleteProject
 } = require('./src/projectFn');
 
@@ -52,7 +54,7 @@ router.post('/login', async (ctx) => {
         queryUser.result._id,
         {
           domain: 'localhost',
-          maxAge: 1000 * 60 * 60 * 24,
+          maxAge: 1000 * 60 * 60 * 48,
           httpOnly: false
         }
       )
@@ -329,7 +331,55 @@ router.post('/deleteIcon', async (ctx) => {
 
 // 移动图片到其它项目
 router.post('/addTo', async (ctx) => {
-  const { joinURL, filename } = ctx.query;
+  const { personalSelects, teamSelects, path, icons } = ctx.request.body;
+  const userId = ctx.cookies.get('_id');
+  if (!userId) {
+    ctx.body = { state: 'error', result: 'not online' };
+    return;
+  }
+  const responseResult = {
+    personal: {},
+    team: {}
+  };
+  // 查询个人项目中是否存在同名图片
+  const personalResult = await filterProjectsIcons(
+    userId,
+    personalSelects,
+    'personal',
+    icons
+  );
+  // 查询团队项目中是否存在同名图片
+  const teamResult = await filterProjectsIcons(
+    userId,
+    teamSelects,
+    'team',
+    icons
+  );
+  if (personalResult.state === 'error' || teamResult.state === 'error') {
+    ctx.body = { state: 'error', result: 'server error' };
+    return;
+  }
+  for (let projectName in personalResult.result) {
+    const isUserProject = await getProject({
+      userId,
+      type: 'personal',
+      name: projectName
+    });
+    const newIcons = [];
+    personalResult.result[projectName].forEach((iconName) => {
+      if (personalResult.result[projectName][iconName]) {
+        newIcons.push(iconName);
+      }
+    });
+    updateProjectMessage2(
+      projectName,
+      'personal',
+      { icons: [...newIcons, ...isUserProject.result.icons]}
+    );
+  }
+  responseResult.personal = personalResult.result;
+  responseResult.team = teamResult.result;
+  ctx.body = { state: 'success', result: responseResult };
 });
 
 // 下载文件
