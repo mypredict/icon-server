@@ -60,7 +60,7 @@ exports.updateProjectMessage = (_id, query) => {
 exports.updateProjectMessage2 = (projectName, type, query) => {
   return new Promise((resolve, reject) => {
     ProjectModel.findOneAndUpdate(
-      { projectName, type },
+      { name: projectName, type },
       { $set: query },
       { new: true, useFindAndModify: false },
       (err, data) => {
@@ -90,6 +90,10 @@ const getProject = (query) => {
 exports.filterProjectsIcons = (userId, projects, type, icons) => {
   const responseResult = {};
   return new Promise((resolve, reject) => {
+    if (projects.length <= 0) {
+      resolve({ state: 'success', result: {} });
+      return 
+    }
     projects.forEach(async (project) => {
       responseResult[project] = {};
       const isUserProject = await getProject({

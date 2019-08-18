@@ -80,7 +80,17 @@ exports.fileRename = (path, newName, oldName) => {
 // 移动文件到文件夹
 exports.cpFile = (fileName, oldPath, newPath) => {
   return new Promise((resolve, reject) => {
-    
+    const sourceFile = path.join(__dirname, `../${basePath}/${oldPath}/${fileName}`);
+    const targetPath = path.join(__dirname, `../${basePath}/${newPath}/${fileName}`);
+    const readStream = fs.createReadStream(sourceFile);
+    const writeStream = fs.createWriteStream(targetPath);
+    readStream.pipe(writeStream);
+    readStream.on('end', (err) => {
+      if (err) {
+        reject({ state: 'error', result: 'server is error' });
+      }
+      resolve({ state: 'success', result: 'copySuccess'});
+    });
   });
 }
 

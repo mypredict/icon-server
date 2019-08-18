@@ -8,6 +8,7 @@ const {
   deleteFolder,
   uploadFile,
   fileRename,
+  cpFile,
   compressFiles,
   uploadHead
 } = require('./src/fileFn');
@@ -168,7 +169,7 @@ router.post('/createProject', async (ctx) => {
       } else {
         updateUserMessage(
           userId,
-          { teamProjects: [name, ...userMessage.result.personalProjects] }
+          { teamProjects: [name, ...userMessage.result.teamProjects] }
         );
       }
     }
@@ -212,14 +213,22 @@ router.post('/deleteProject', async (ctx) => {
         delete projectIconsCache[projectId];
         // 删除整个图的文件夹
         deleteFolder(link);
+        const userMessage = await getUser({ _id: userId });
         if (type === 'personal') {
           // 删除用户的个人项目记录
-          const userMessage = await getUser({ _id: userId });
           const newPersonalProjects =
             userMessage.result.personalProjects.filter(item => item !== name);
           updateUserMessage(
             userId,
             { personalProjects: newPersonalProjects }
+          );
+        } else {
+          // 删除用户的团队项目记录
+          const newTeamProjects =
+            userMessage.result.teamProjects.filter(item => item !== name);
+          updateUserMessage(
+            userId,
+            { teamProjects: newTeamProjects }
           );
         }
       }
@@ -359,21 +368,45 @@ router.post('/addTo', async (ctx) => {
     ctx.body = { state: 'error', result: 'server error' };
     return;
   }
+  // 更新个人项目
   for (let projectName in personalResult.result) {
     const isUserProject = await getProject({
       userId,
       type: 'personal',
       name: projectName
     });
+    const currentProjectResult = personalResult.result[projectName];
     const newIcons = [];
-    personalResult.result[projectName].forEach((iconName) => {
-      if (personalResult.result[projectName][iconName]) {
+    for (let iconName in currentProjectResult) {
+      if (currentProjectResult[iconName]) {
         newIcons.push(iconName);
+        cpFile(iconName, path, `personal/${userId}/${projectName}`);
       }
-    });
+    }
     updateProjectMessage2(
       projectName,
       'personal',
+      { icons: [...newIcons, ...isUserProject.result.icons]}
+    );
+  }
+  // 更新团队项目
+  for (let projectName in teamResult.result) {
+    const isUserProject = await getProject({
+      userId,
+      type: 'team',
+      name: projectName
+    });
+    const currentProjectResult = teamResult.result[projectName];
+    const newIcons = [];
+    for (let iconName in currentProjectResult) {
+      if (currentProjectResult[iconName]) {
+        newIcons.push(iconName);
+        cpFile(iconName, path, `team/${userId}/${projectName}`);
+      }
+    }
+    updateProjectMessage2(
+      projectName,
+      'team',
       { icons: [...newIcons, ...isUserProject.result.icons]}
     );
   }
