@@ -267,11 +267,27 @@ router.post('/uploadFiles', async (ctx) => {
   projectIconsCache[projectId] = projectIconsCache[projectId]
     ? [...projectIconsCache[projectId], fileName]
     : [fileName];
+  // 所有的图标
   const newIcons = [...new Set([...projectIconsCache[projectId], ...isUserProject.result.icons])];
+  // 筛选出放入base的图标
+  const iconGroups = isUserProject.result.iconGroups;
+  const otherIcons = [];
+  for (let group in iconGroups) {
+    if (group !== 'base') {
+      otherIcons.push(...iconGroups[group]);
+    }
+  }
+  const baseIcons = newIcons.filter((icon) => !otherIcons.includes(icon));
   // 上传文件成功后更新相应项目中的记录
   ctx.body = await updateProjectMessage(
     projectId,
-    { icons: newIcons}
+    {
+      icons: newIcons,
+      iconGroups: {
+        ...iconGroups,
+        base: baseIcons
+      }
+    }
   );
 });
 
@@ -294,13 +310,29 @@ router.post('/iconRename', async (ctx) => {
     ctx.body = renameResult;
     return;
   }
+  // 新的icons
   const newIcons = isUserProject.result.icons.map(icon => {
     if (icon === oldName) {
       return newName;
     }
     return icon;
   });
-  ctx.body = await updateProjectMessage(projectId, { icons: newIcons });
+  // 新的iconGroups
+  const iconGroups = isUserProject.result.iconGroups;
+  for (let group in iconGroups) {
+    iconGroups[group].forEach((icon, index) => {
+      if (icon === oldName) {
+        iconGroups[group].splice(index, 1, newName);
+      }
+    });
+  }
+  ctx.body = await updateProjectMessage(
+    projectId,
+    {
+      icons: newIcons,
+      iconGroups
+    }
+  );
 });
 
 // 删除图片
@@ -323,9 +355,22 @@ router.post('/deleteIcon', async (ctx) => {
     return;
   }
   const newIcons = getProjectResult.result.icons.filter(icon => !iconNames.includes(icon));
+  // 新的iconGroups
+  const iconGroups = isUserProject.result.iconGroups;
+  const newIconGroups = { ...isUserProject.result.iconGroups };
+  for (let group in iconGroups) {
+    iconGroups[group].forEach((icon, index) => {
+      if (iconNames.includes(icon)) {
+        newIconGroups[group].splice(index, 1);
+      }
+    });
+  }
   const updateProjectResult = await updateProjectMessage(
     projectId,
-    { icons: newIcons }
+    {
+      icons: newIcons,
+      iconGroups: newIconGroups
+    }
   );
   ctx.body = updateProjectResult;
   // 更新成功后删除相应缓存和文件
@@ -383,10 +428,14 @@ router.post('/addTo', async (ctx) => {
         cpFile(iconName, path, `personal/${userId}/${projectName}`);
       }
     }
+    const iconGroups = isUserProject.result.iconGroups;
     updateProjectMessage2(
       projectName,
       'personal',
-      { icons: [...newIcons, ...isUserProject.result.icons]}
+      {
+        icons: [...newIcons, ...isUserProject.result.icons],
+        iconGroups: { ...iconGroups, base: [...newIcons, ...iconGroups.base] }
+      }
     );
   }
   // 更新团队项目
@@ -404,15 +453,99 @@ router.post('/addTo', async (ctx) => {
         cpFile(iconName, path, `team/${userId}/${projectName}`);
       }
     }
+    const iconGroups = isUserProject.result.iconGroups;
     updateProjectMessage2(
       projectName,
       'team',
-      { icons: [...newIcons, ...isUserProject.result.icons]}
+      {
+        icons: [...newIcons, ...isUserProject.result.icons],
+        iconGroups: { ...iconGroups, base: [...newIcons, ...iconGroups.base] }
+      }
     );
   }
   responseResult.personal = personalResult.result;
   responseResult.team = teamResult.result;
   ctx.body = { state: 'success', result: responseResult };
+});
+
+// 新建分组
+router.post('/createGroup', async (ctx) => {
+  const { projectId, groupName } = ctx.request.body;
+  const userId = ctx.cookies.get('_id');
+  const isUserProject = await getProject({ _id: projectId, userId });
+  if (isUserProject.state === 'error') {
+    ctx.body = isUserProject;
+    return;
+  }
+  const iconGroups = isUserProject.result.iconGroups;
+  iconGroups[groupName] = [];
+  ctx.body = await updateProjectMessage(
+    projectId,
+    { iconGroups }
+  );
+});
+
+// 移动图标到不同分组
+router.post('/moveIconsGroup', async (ctx) => {
+  const { projectId, icons, groupName } = ctx.request.body;
+  const userId = ctx.cookies.get('_id');
+  const isUserProject = await getProject({ _id: projectId, userId });
+  if (isUserProject.state === 'error') {
+    ctx.body = isUserProject;
+    return;
+  }
+  const iconGroups = isUserProject.result.iconGroups;
+  const newIconGroups = {};
+  for (let group in iconGroups) {
+    newIconGroups[group] = iconGroups[group].filter((icon) => !icons.includes(icon));
+  }
+  newIconGroups[groupName] = [...icons, ...newIconGroups[groupName]];
+  ctx.body = await updateProjectMessage(
+    projectId,
+    { iconGroups: newIconGroups }
+  );
+});
+
+// 分组改名
+router.post('/renameGroup', async (ctx) => {
+  const { projectId, oldGroupName, newGroupName } = ctx.request.body;
+  const userId = ctx.cookies.get('_id');
+  const isUserProject = await getProject({ _id: projectId, userId });
+  if (isUserProject.state === 'error') {
+    ctx.body = isUserProject;
+    return;
+  }
+  const iconGroups = isUserProject.result.iconGroups;
+  const newIconGroups = {};
+  for (let group in iconGroups) {
+    if (group === oldGroupName) {
+      newIconGroups[newGroupName] = iconGroups[oldGroupName];
+    } else {
+      newIconGroups[group] = iconGroups[group];
+    }
+  }
+  ctx.body = await updateProjectMessage(
+    projectId,
+    { iconGroups: newIconGroups }
+  );
+});
+
+// 删除分组
+router.post('/deleteGroup', async (ctx) => {
+  const { projectId, groupName } = ctx.request.body;
+  const userId = ctx.cookies.get('_id');
+  const isUserProject = await getProject({ _id: projectId, userId });
+  if (isUserProject.state === 'error') {
+    ctx.body = isUserProject;
+    return;
+  }
+  const iconGroups = isUserProject.result.iconGroups;
+  iconGroups.base = [...iconGroups[groupName], ...iconGroups.base];
+  delete iconGroups[groupName];
+  ctx.body = await updateProjectMessage(
+    projectId,
+    { iconGroups }
+  );
 });
 
 // 下载文件

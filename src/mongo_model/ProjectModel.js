@@ -10,6 +10,12 @@ const projectSchema = new Schema({
   icons: {
     type: Array,
     default: []
+  },
+  iconGroups: {
+    type: Object,
+    default: {
+      base: []
+    }
   }
 }, {
   versionKey: false,
