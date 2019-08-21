@@ -348,22 +348,13 @@ router.post('/deleteIcon', async (ctx) => {
     ctx.body = isUserProject;
     return;
   }
-  // 删除数据库中对应项目中的记录
-  const getProjectResult = await getProject({ _id: projectId });
-  if (getProjectResult.state !== 'success') {
-    ctx.body = getProjectResult;
-    return;
-  }
-  const newIcons = getProjectResult.result.icons.filter(icon => !iconNames.includes(icon));
-  // 新的iconGroups
+  // 新的 icons
+  const newIcons = isUserProject.result.icons.filter(icon => !iconNames.includes(icon));
+  // 新的 iconGroups
   const iconGroups = isUserProject.result.iconGroups;
-  const newIconGroups = { ...isUserProject.result.iconGroups };
+  const newIconGroups = {};
   for (let group in iconGroups) {
-    iconGroups[group].forEach((icon, index) => {
-      if (iconNames.includes(icon)) {
-        newIconGroups[group].splice(index, 1);
-      }
-    });
+    newIconGroups[group] = iconGroups[group].filter((icon) => !iconNames.includes(icon));
   }
   const updateProjectResult = await updateProjectMessage(
     projectId,
