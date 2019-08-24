@@ -1,5 +1,6 @@
 const Router = require('koa-router');
 const fs = require('fs');
+const { serverPath } = require('./src/config');
 
 const { register, getUser, updateUserMessage } = require('./src/userFn');
 const {
@@ -54,7 +55,7 @@ router.post('/login', async (ctx) => {
         '_id',
         queryUser.result._id,
         {
-          domain: 'localhost',
+          domain: serverPath,
           maxAge: 1000 * 60 * 60 * 48,
           httpOnly: false
         }
@@ -118,7 +119,7 @@ router.get('/logout', async (ctx) => {
       '_id',
       '',
       {
-        domain: 'localhost',
+        domain: serverPath,
         maxAge: 1000 * 60 * 60 * 24,
         httpOnly: false
       }
