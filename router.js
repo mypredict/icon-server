@@ -11,7 +11,8 @@ const {
   fileRename,
   cpFile,
   compressFiles,
-  uploadHead
+  uploadHead,
+  svgoPack
 } = require('./src/fileFn');
 const {
   createProject,
@@ -243,7 +244,7 @@ router.post('/deleteProject', async (ctx) => {
 
 // 文件上传
 router.post('/uploadFiles', async (ctx) => {
-  const { projectId, path } = ctx.request.body;
+  const { projectId, path, iconType } = ctx.request.body;
   const file = ctx.request.files.file;
   const fileName = file.name;
   const userId = ctx.cookies.get('_id');
@@ -290,11 +291,12 @@ router.post('/uploadFiles', async (ctx) => {
       }
     }
   );
+  svgoPack(path);
 });
 
 // 更改图片名称
 router.post('/iconRename', async (ctx) => {
-  const { projectId, path, newName, oldName } = ctx.request.body;
+  const { projectId, path, newName, oldName, iconType } = ctx.request.body;
   const userId = ctx.cookies.get('_id');
   const isUserProject = await getProject({ _id: projectId, userId });
   // 用户是否具有本项目权限
@@ -327,6 +329,7 @@ router.post('/iconRename', async (ctx) => {
       }
     });
   }
+  svgoPack(path);
   ctx.body = await updateProjectMessage(
     projectId,
     {
@@ -338,7 +341,7 @@ router.post('/iconRename', async (ctx) => {
 
 // 删除图片
 router.post('/deleteIcon', async (ctx) => {
-  const { iconNames, projectId, path } = ctx.request.body;
+  const { iconNames, projectId, path, iconType } = ctx.request.body;
   const userId = ctx.cookies.get('_id');
   if (!userId) {
     ctx.body = { state: 'error', result: 'not online' };
@@ -373,6 +376,7 @@ router.post('/deleteIcon', async (ctx) => {
     }
     iconNames.forEach(icon => deleteFile(`${path}/${icon}`));
   }
+  svgoPack(path);
 });
 
 // 移动图片到其它项目
@@ -429,6 +433,7 @@ router.post('/addTo', async (ctx) => {
         iconGroups: { ...iconGroups, base: [...newIcons, ...iconGroups.base] }
       }
     );
+    svgoPack(`personal/${userId}/${projectName}`);
   }
   // 更新团队项目
   for (let projectName in teamResult.result) {
@@ -454,6 +459,7 @@ router.post('/addTo', async (ctx) => {
         iconGroups: { ...iconGroups, base: [...newIcons, ...iconGroups.base] }
       }
     );
+    svgoPack(`team/${userId}/${projectName}`);
   }
   responseResult.personal = personalResult.result;
   responseResult.team = teamResult.result;
