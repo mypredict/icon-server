@@ -546,6 +546,12 @@ router.post('/deleteGroup', async (ctx) => {
   );
 });
 
+// 更新项目的 iconfont.js 文件
+router.post('/updateIconfont', async (ctx) => {
+  const { path } = ctx.request.body;
+  ctx.body = await svgoPack(path);
+});
+
 // 下载文件
 router.get('/download', async (ctx) => {
   const { path, filename } = ctx.query;
