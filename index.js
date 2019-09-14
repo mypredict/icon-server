@@ -2,7 +2,10 @@ const Koa = require('koa');
 const server = require('koa-static');
 const koaBody = require('koa-body');
 const router = require('./router');
+const { catchError } = require('./src/middlewares/index');
 const app = new Koa();
+
+app.use(catchError);
 
 app.use(server(__dirname + '/public'));
 
